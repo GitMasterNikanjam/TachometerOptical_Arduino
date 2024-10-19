@@ -2,8 +2,12 @@
 
 #define _2PI  6.2831853
 
-// Initialize static array to store instances for each 8 channels
+// Initialize static array to store instances for each 3 channels.
 RPM* RPM::_instances[3] = {nullptr};
+
+uint16_t RPM::ParametersStruct::MAX = 0;
+
+uint16_t RPM::ParametersStruct::MIN = 0;
 
 float RPM::ParametersStruct::FILTER_FRQ = 0;
 
@@ -18,44 +22,23 @@ volatile unsigned long RPM::_T = 0;
 
  void _calcInput_CH1(void)
 {
-  // if the pin is high, its the start of an interrupt
-  if(digitalRead(RPM::_instances[0]->parameters.PIN_NUM) == HIGH)
-  { 
-    RPM::_instances[0]->_startPeriod = micros();
-  }
-  else
-  {
-      RPM::_instances[0]->value.raw = (int)(micros() - RPM::_instances[0]->_startPeriod);
-      RPM::_instances[0]->_startPeriod = 0;
-  }
+  unsigned long tNow = micros();
+  RPM::_instances[0]->pwmValue = (uint32_t)(tNow - RPM::_instances[0]->_startPeriod);
+  RPM::_instances[0]->_startPeriod = tNow;
 }
 
  void _calcInput_CH2(void)
 {
-  // if the pin is high, its the start of an interrupt
-  if(digitalRead(RPM::_instances[1]->parameters.PIN_NUM) == HIGH)
-  { 
-    RPM::_instances[1]->_startPeriod = micros();
-  }
-  else
-  {
-      RPM::_instances[1]->value.raw = (int)(micros() - RPM::_instances[1]->_startPeriod);
-      RPM::_instances[1]->_startPeriod = 0;
-  }
+  unsigned long tNow = micros();
+  RPM::_instances[1]->pwmValue = (uint32_t)(tNow - RPM::_instances[1]->_startPeriod);
+  RPM::_instances[1]->_startPeriod = tNow;
 }
 
  void _calcInput_CH3(void)
 {
-  // if the pin is high, its the start of an interrupt
-  if(digitalRead(RPM::_instances[2]->parameters.PIN_NUM) == HIGH)
-  { 
-    RPM::_instances[2]->_startPeriod = micros();
-  }
-  else
-  {
-      RPM::_instances[2]->value.raw = (int)(micros() - RPM::_instances[2]->_startPeriod);
-      RPM::_instances[2]->_startPeriod = 0;
-  }
+  unsigned long tNow = micros();
+  RPM::_instances[2]->pwmValue = (uint32_t)(tNow - RPM::_instances[2]->_startPeriod);
+  RPM::_instances[2]->_startPeriod = tNow;
 }
 
 // ##########################################################################
@@ -66,12 +49,10 @@ RPM::RPM()
 {
 		// Set default value at construction function:
 
-    parameters.DEADZONE = 0;	
     parameters.PIN_NUM = -1;	
     parameters.CHANNEL_NUM = 0;	
 
     value.raw = 0;
-    value.maped = 0;
     value.filtered = 0;
 
     _T = 0;
@@ -87,9 +68,9 @@ RPM::~RPM()
 
 bool RPM::attach(uint8_t channel_number, uint8_t pin_number)
 {	
-  if( (channel_number > 8) || (channel_number == 0) )
+  if( (channel_number > 3) || (channel_number == 0) )
   {
-    errorMessage = "Error RCIN_PWM: channel number is not correct.";
+    errorMessage = "Error RPM: channel number is not correct.";
     return false;
   }
 
@@ -119,41 +100,6 @@ bool RPM::detach(void)
   _attachedFlag = false;
   return true;
 }
-
-
-uint16_t RPM::_map(void)
-{
-
-  value.maped = (60.0/(float)value.raw)*1000000.0;
-
-  return value.maped;
-}
-
-void RPM::setDeadzone(uint16_t value)
-{
-  parameters.DEADZONE = value;
-}
-
-bool RPM::setFilterFrequency(float frq)
-{
-  if(frq < 0)
-  {
-    errorMessage = "Error RCIN_PWM: filter frequency can not be negative.";
-    return false;
-  }
-	RPM::parameters.FILTER_FRQ = frq;
-}
-
-bool RPM::setUpdateFrequency(float frq)
-{
-  if(frq < 0)
-  {
-    errorMessage = "Error RCIN_PWM: Update frequency can not be negative.";
-    return false;
-  }
-
-	RPM::parameters.UPDATE_FRQ = frq;
-}
 	
 void RPM::update(void)
 {
@@ -177,20 +123,29 @@ void RPM::update(void)
     RPM::_alpha = 0;
   }
 
-  for(int i = 1; i <= 8; i++)
+  for(int i = 1; i <= 3; i++)
   {
     if(_instances[i-1]->_attachedFlag == true)
     {
+      uint32_t temp = 60.0/(float)(_instances[i-1]->pwmValue)*1000000.0;
+      _instances[i-1]->value.raw = temp;
 
-      _instances[i-1]->_map();
-      
+      if(temp < RPM::ParametersStruct::MIN)
+      {
+        temp = 0;
+      }
+      else if( (temp > RPM::ParametersStruct::MAX) && (RPM::ParametersStruct::MAX > 0) )
+      {
+        continue;
+      }
+
       if(_instances[i-1]->parameters.FILTER_FRQ > 0)
       {
-        _instances[i-1]->value.filtered = _alpha * _instances[i-1]->value.filtered + (1.0 - _alpha) * _instances[i-1]->value.maped;
+        _instances[i-1]->value.filtered = _alpha * _instances[i-1]->value.filtered + (1.0 - _alpha) * temp;
       }
       else
       {
-        _instances[i-1]->value.filtered = _instances[i-1]->value.maped;
+        _instances[i-1]->value.filtered = temp;
       }
     }
   }	
@@ -206,7 +161,7 @@ bool RPM::init(void)
     return false;
   }
 
-  if( (_attachedFlag == true) && (parameters.PIN_NUM >= 0) )
+  if(_attachedFlag == true)
   {
     pinMode(parameters.PIN_NUM,INPUT_PULLUP);
     
@@ -225,25 +180,21 @@ bool RPM::init(void)
       break;	
     }
 
-    attachInterrupt(digitalPinToInterrupt(parameters.PIN_NUM), _funPointer, CHANGE);
-  }
-  else
-  {
-    _attachedFlag = false;
+    attachInterrupt(digitalPinToInterrupt(parameters.PIN_NUM), _funPointer, RISING);
   }
   
-
   return true;
 }
 
 bool RPM::_checkParameters(void)
 {
   bool state = (parameters.FILTER_FRQ >= 0) && (parameters.UPDATE_FRQ >= 0) &&
-               (parameters.PIN_NUM >= 0) && (parameters.CHANNEL_NUM >= 1) && (parameters.CHANNEL_NUM <= 3) ;
+               (parameters.PIN_NUM >= 0) && (parameters.CHANNEL_NUM >= 1) && (parameters.CHANNEL_NUM <= 3) &&
+               (parameters.MAX >= parameters.MIN) ;
 
   if(state == false)
   {
-    errorMessage = "Error RCIN_PWM: One or some parameters is not correct.";
+    errorMessage = "Error RPM: One or some parameters is not correct.";
     return false;
   }
 

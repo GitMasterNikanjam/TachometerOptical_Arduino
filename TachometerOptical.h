@@ -17,7 +17,6 @@ For more information read README.md file.
 // ####################################################################
 // Define macros:
 
-#define TachometerOptical_VERSION  "v1.0" // software version of this library
 
 // ###################################################################################
 //  General function declarations:
@@ -35,20 +34,32 @@ class RPM
     // Parameters struct
     struct ParametersStruct
     {
+      /**
+       * Min RPM value that accept in update method. Bellow that return zero value.
+       * Default value: 0.
+      */
+      static uint16_t MIN;
 
-      // Dead zone value [us] of channels from RAW_MID value point that ignored.
-      uint16_t DEADZONE;
+      /**
+       * Max RPM value that accesp in update method. Upper that return last value updatation.
+       * Default value: 0. Means it disabled.
+      */
+      static uint16_t MAX;
 
-      // [Hz]. Low pass filter frequency(Cutoff filter frequency). **Hint: 0 value means disable it.
+      /*
+       * [Hz]. Low pass filter frequency(Cutoff filter frequency). **Hint: 0 value means disable it.
+       * Default value: 0.
+      */ 
       static float FILTER_FRQ;
 
-      // Update method frequency. This value insure that RC maped/filtered values just update in certain frequency. **Hint: 0 value means disable it.
+      // Update frequency. This value insure that RPM filtered values just update in certain frequency. **Hint: 0 value means disable it.
       static float UPDATE_FRQ;
 
       // Digital pin number of arduino that used for input pwm signal.
-      // -1 value means no pin.
+      // -1 value means no pin assigned.
       int8_t PIN_NUM;	
 
+      // Channel number. Max 3 deferent channel can be used for all RPM objects.
       uint8_t CHANNEL_NUM;											
 
     }parameters;
@@ -56,13 +67,10 @@ class RPM
     // Values struct.
     struct VariablesStruct
     {
-      // [us]. Raw input pwm signal measurement values. (For 8 channel).
-      volatile uint16_t raw;
-
-      // [us]. Maped input pwm signal values. (For 8 channel).
-      float maped;
+      // [RPM]. Raw input RPM signal measurement values.
+      uint16_t raw;
       
-      // [us]. Filtered maped input pwm signal values. (For 8 channel).
+      // [RPM]. RPM value after lowpass filter and MIN/MAX saturation.
       float filtered;		
     }value;
 
@@ -75,13 +83,13 @@ class RPM
     ~RPM();
 
     /**
-     * Initialize RCIN_PWM object. Check parameters validation.
+     * Initialize object. Check parameters validation.
      * @return true if successed.
      */ 
     bool init(void);
 
     /**
-     * Attach a digital pin to RCIN_PWM channels. 
+     * Attach a digital pin to RPM channels. 
      * Static function to create or get the instance for a specific channel
      * Creates an instance of the class for a specific channel and pin. If an object for the same channel exists, it is replaced.
      */ 
@@ -90,40 +98,30 @@ class RPM
     // Static function to detach the object for a specific channel
     // Removes an object for a specific channel.
     bool detach(void);
-    
-    /**
-     * Set dead zone of raw pwm value [us] for channels.
-     * @return true if successed.
-     */
-    void setDeadzone(uint16_t value);
-    
-    /**
-     * Set filter frequency [Hz] for low pass filter. **Hint: 0 value means it is disable.
-     * @return true if successed.
-     */
-    bool setFilterFrequency(float value);
-    
-    /**
-     * Set update method frequency [Hz]. **Hint: 0 value means it is disable.
-     * @return true if successed.
-     */
-    bool setUpdateFrequency(float value);
 
     /**
-     * update and calculate maped/filtered pwm value.
+     * update and calculate filtered RPM value.
      */
     static void update(void);
 
   private:
 
-    // Static array to store instances per channel
-    // Array to hold one object per channel (1-3)
+    /**
+     * [us]. Signal PWM value.
+    */
+    volatile uint32_t pwmValue;
+
+    /**
+     * Static array to store instances per channel
+     * Array to hold one object per channel (1-3)  
+     * Cell 0 is for channel 1. Cell 1 is for channel 2. Cell 2 is for channel 3.
+    */
     static RPM* _instances[3];
 
     // Define function pointer type
     typedef void (*FunctionPtr)();
 
-    // FunctionPtr object for RCIN PWM interrupts handler.
+    // FunctionPtr object for RPM signals interrupts handler.
     FunctionPtr _funPointer;
 
     // Flag for store state of channeles that attached(true) or not_attached(false)
@@ -138,12 +136,6 @@ class RPM
     
     // [us]. Time at update() method.
     static volatile unsigned long _T;
-
-    /**
-    * Calculate pwm maped value.
-    * @return PWM maped value.
-    */
-    uint16_t _map(void);
 
     /** 
     * Check parameters validation.

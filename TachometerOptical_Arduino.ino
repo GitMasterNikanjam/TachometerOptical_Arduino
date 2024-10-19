@@ -8,9 +8,7 @@
 // Define macros:
 
 
-#define RPM_PIN                     45        // RC PWM input signal pin number.
-#define RPM_PIN                     47        // RC PWM input signal pin number.
-#define RPM_PIN                     49        // RC PWM input signal pin number.
+#define RPM1_PIN                     41        // RC PWM input signal pin number.
 
 // ############################################################################
 // Define Global variables and objects:
@@ -23,10 +21,25 @@ RPM rpm;
 
 void setup() {
   // put your setup code here, to run once:
-
+  Serial.begin(115200);
+  if(rpm.attach(1, RPM1_PIN) == false)
+  {
+    Serial.println(rpm.errorMessage);
+    while(1);
+  }
+  
+  if(rpm.init() == false)
+  {
+    Serial.println(rpm.errorMessage);
+    while(1);
+  }
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
+  rpm.update();
 
+  Serial.println(rpm.value.raw);
+
+  delay(100);
 }
