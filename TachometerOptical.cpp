@@ -1,21 +1,32 @@
+
+// ######################################################################
+// Include libraries:
+
 #include "TachometerOptical.h"
 
-#define _2PI  6.2831853
+// #######################################################################
+// Define macros:
 
-// Initialize static array to store instances for each 3 channels.
-RPM* RPM::_instances[3] = {nullptr};
+#define _2PI          6.2831853       // 2*pi
 
-uint16_t RPM::ParametersStruct::MAX = 0;
+// ########################################################################
+// Initialize static variables:
 
-uint16_t RPM::ParametersStruct::MIN = 0;
+TachometerOptical* TachometerOptical::_instances[3] = {nullptr};
 
-float RPM::ParametersStruct::FILTER_FRQ = 0;
+uint16_t TachometerOptical::ParametersStructure::MAX = 0;
 
-float RPM::ParametersStruct::UPDATE_FRQ = 0;
+uint16_t TachometerOptical::ParametersStructure::MIN = 0;
 
-float RPM::_alpha = 0;
+float TachometerOptical::ParametersStructure::FILTER_FRQ = 0;
 
-volatile unsigned long RPM::_T = 0;
+float TachometerOptical::ParametersStructure::UPDATE_FRQ = 0;
+
+float TachometerOptical::_alpha = 0;
+
+volatile uint32_t TachometerOptical::_T = 0;
+
+float TachometerOptical::ValuesStructure::sharedRPM = 0;	
 
 // ##########################################################################
 // General function definitions:
@@ -23,54 +34,53 @@ volatile unsigned long RPM::_T = 0;
  void _calcInput_CH1(void)
 {
   unsigned long tNow = micros();
-  RPM::_instances[0]->pwmValue = (uint32_t)(tNow - RPM::_instances[0]->_startPeriod);
-  RPM::_instances[0]->_startPeriod = tNow;
+  TachometerOptical::_instances[0]->_period = (uint32_t)(tNow - TachometerOptical::_instances[0]->_startPeriod);
+  TachometerOptical::_instances[0]->_startPeriod = tNow;
 }
 
  void _calcInput_CH2(void)
 {
   unsigned long tNow = micros();
-  RPM::_instances[1]->pwmValue = (uint32_t)(tNow - RPM::_instances[1]->_startPeriod);
-  RPM::_instances[1]->_startPeriod = tNow;
+  TachometerOptical::_instances[1]->_period = (uint32_t)(tNow - TachometerOptical::_instances[1]->_startPeriod);
+  TachometerOptical::_instances[1]->_startPeriod = tNow;
 }
 
  void _calcInput_CH3(void)
 {
   unsigned long tNow = micros();
-  RPM::_instances[2]->pwmValue = (uint32_t)(tNow - RPM::_instances[2]->_startPeriod);
-  RPM::_instances[2]->_startPeriod = tNow;
+  TachometerOptical::_instances[2]->_period = (uint32_t)(tNow - TachometerOptical::_instances[2]->_startPeriod);
+  TachometerOptical::_instances[2]->_startPeriod = tNow;
 }
 
 // ##########################################################################
+// TachometerOptical class:
 
-// RCIN_PWM RCIN_PWM;
-
-RPM::RPM()
+TachometerOptical::TachometerOptical()
 {
 		// Set default value at construction function:
 
     parameters.PIN_NUM = -1;	
     parameters.CHANNEL_NUM = 0;	
 
-    value.raw = 0;
-    value.filtered = 0;
+    value.rawRPM = 0;
+    value.RPM = 0;
 
-    _T = 0;
+    _period = 0;
+    _startPeriod = 0;
+
     _attachedFlag = false;
 }
 
-// Destructor
-RPM::~RPM() 
+TachometerOptical::~TachometerOptical() 
 {
-    // Detach interrupt when the object is destroyed
-    detachInterrupt(digitalPinToInterrupt(parameters.PIN_NUM));
+    detach();
 }
 
-bool RPM::attach(uint8_t channel_number, uint8_t pin_number)
+bool TachometerOptical::attach(uint8_t channel_number, uint8_t pin_number)
 {	
   if( (channel_number > 3) || (channel_number == 0) )
   {
-    errorMessage = "Error RPM: channel number is not correct.";
+    errorMessage = "Error TachometerOptical: channel number is not correct.";
     return false;
   }
 
@@ -92,61 +102,77 @@ bool RPM::attach(uint8_t channel_number, uint8_t pin_number)
 }
 
 // Static function to detach a channel and remove the object
-bool RPM::detach(void) 
+void TachometerOptical::detach(void) 
 {
   // Detach the interrupt and delete the object
   detachInterrupt(digitalPinToInterrupt(parameters.PIN_NUM));
   _instances[parameters.CHANNEL_NUM - 1] = nullptr;
   _attachedFlag = false;
-  return true;
 }
 	
-void RPM::update(void)
+void TachometerOptical::update(void)
 {
 	unsigned long t = micros();
   unsigned long dt = t - _T;
 
-  if(RPM::ParametersStruct::UPDATE_FRQ > 0)
+  if(TachometerOptical::ParametersStructure::UPDATE_FRQ > 0)
   {
-    if(dt < (1000000.0/RPM::ParametersStruct::UPDATE_FRQ))
+    if(dt < (1000000.0/TachometerOptical::ParametersStructure::UPDATE_FRQ))
     {
       return ;
     }
   }
 
-  if(RPM::ParametersStruct::FILTER_FRQ > 0)
+  if(TachometerOptical::ParametersStructure::FILTER_FRQ > 0)
   {
-    RPM::_alpha = 1.0 / (1.0 + _2PI * RPM::ParametersStruct::FILTER_FRQ * dt / 1000000.0);
+    TachometerOptical::_alpha = 1.0 / (1.0 + _2PI * TachometerOptical::ParametersStructure::FILTER_FRQ * dt / 1000000.0);
   }
   else
   {
-    RPM::_alpha = 0;
+    TachometerOptical::_alpha = 0;
   }
 
   for(int i = 1; i <= 3; i++)
   {
     if(_instances[i-1]->_attachedFlag == true)
     {
-      uint32_t temp = 60.0/(float)(_instances[i-1]->pwmValue)*1000000.0;
-      _instances[i-1]->value.raw = temp;
+      float temp = (double)60.0/(double)(_instances[i-1]->_period)*1000000.0;
 
-      if(temp < RPM::ParametersStruct::MIN)
+      if( (t - TachometerOptical::_instances[i-1]->_startPeriod) >  1000000.0)
       {
         temp = 0;
       }
-      else if( (temp > RPM::ParametersStruct::MAX) && (RPM::ParametersStruct::MAX > 0) )
+
+      if(temp > TachometerOptical::ParametersStructure::MIN)
+      {
+        if( (float)(temp - _instances[i-1]->value.rawRPM) / (float)dt > 10000.0)
+        {
+          _instances[i-1]->value.rawRPM = temp;
+          continue;
+        }
+      }
+
+      _instances[i-1]->value.rawRPM = temp;
+
+      if(temp < TachometerOptical::ParametersStructure::MIN)
+      {
+        temp = 0;
+      }
+      else if( (temp > TachometerOptical::ParametersStructure::MAX) && (TachometerOptical::ParametersStructure::MAX > 0) )
       {
         continue;
       }
 
       if(_instances[i-1]->parameters.FILTER_FRQ > 0)
       {
-        _instances[i-1]->value.filtered = _alpha * _instances[i-1]->value.filtered + (1.0 - _alpha) * temp;
+        _instances[i-1]->value.RPM = _alpha * _instances[i-1]->value.RPM + (1.0 - _alpha) * temp;
       }
       else
       {
-        _instances[i-1]->value.filtered = temp;
+        _instances[i-1]->value.RPM = temp;
       }
+
+      ValuesStructure::sharedRPM = _instances[i-1]->value.RPM;
     }
   }	
 	
@@ -154,12 +180,15 @@ void RPM::update(void)
 	
 }	
 
-bool RPM::init(void)
+bool TachometerOptical::init(void)
 {
   if(!_checkParameters())
   {
     return false;
   }
+
+  _period = 0;
+  _startPeriod = 0;
 
   if(_attachedFlag == true)
   {
@@ -182,11 +211,16 @@ bool RPM::init(void)
 
     attachInterrupt(digitalPinToInterrupt(parameters.PIN_NUM), _funPointer, RISING);
   }
+  else 
+  {
+    errorMessage = "Error TachometerOptical: Object has not attached to any channel.";
+    return false;
+  }
   
   return true;
 }
 
-bool RPM::_checkParameters(void)
+bool TachometerOptical::_checkParameters(void)
 {
   bool state = (parameters.FILTER_FRQ >= 0) && (parameters.UPDATE_FRQ >= 0) &&
                (parameters.PIN_NUM >= 0) && (parameters.CHANNEL_NUM >= 1) && (parameters.CHANNEL_NUM <= 3) &&
@@ -194,7 +228,7 @@ bool RPM::_checkParameters(void)
 
   if(state == false)
   {
-    errorMessage = "Error RPM: One or some parameters is not correct.";
+    errorMessage = "Error TachometerOptical: One or some parameters is not correct.";
     return false;
   }
 

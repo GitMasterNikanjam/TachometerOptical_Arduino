@@ -24,18 +24,18 @@ For more information read README.md file.
 // ##################################################################################3
 // RPM class
 
-class RPM
+class TachometerOptical
 {
   public:
 
     // Last error accured for object.
     String errorMessage;
 
-    // Parameters struct
-    struct ParametersStruct
+    /// Parameters struct
+    struct ParametersStructure
     {
       /**
-       * Min RPM value that accept in update method. Bellow that return zero value.
+       * Min RPM value that acceptabled in update method. Bellow that return zero value.
        * Default value: 0.
       */
       static uint16_t MIN;
@@ -64,23 +64,25 @@ class RPM
 
     }parameters;
 
-    // Values struct.
-    struct VariablesStruct
+    /// Values struct.
+    struct ValuesStructure
     {
       // [RPM]. Raw input RPM signal measurement values.
-      uint16_t raw;
+      float rawRPM;
       
       // [RPM]. RPM value after lowpass filter and MIN/MAX saturation.
-      float filtered;		
+      float RPM;
+
+      static float sharedRPM;		
     }value;
 
     /**
     * Constructor. Init default value of variables and parameters.
     */
-    RPM();
+    TachometerOptical();
 
     // Destructor
-    ~RPM();
+    ~TachometerOptical();
 
     /**
      * Initialize object. Check parameters validation.
@@ -97,7 +99,7 @@ class RPM
 	
     // Static function to detach the object for a specific channel
     // Removes an object for a specific channel.
-    bool detach(void);
+    void detach(void);
 
     /**
      * update and calculate filtered RPM value.
@@ -107,16 +109,11 @@ class RPM
   private:
 
     /**
-     * [us]. Signal PWM value.
-    */
-    volatile uint32_t pwmValue;
-
-    /**
      * Static array to store instances per channel
      * Array to hold one object per channel (1-3)  
      * Cell 0 is for channel 1. Cell 1 is for channel 2. Cell 2 is for channel 3.
     */
-    static RPM* _instances[3];
+    static TachometerOptical* _instances[3];
 
     // Define function pointer type
     typedef void (*FunctionPtr)();
@@ -127,15 +124,20 @@ class RPM
     // Flag for store state of channeles that attached(true) or not_attached(false)
     bool _attachedFlag;
 
-    // Start timer value for each pwm channel.
-    volatile unsigned long _startPeriod;						
+    // Start timer value. [us]
+    volatile uint32_t _startPeriod;		
+
+    /**
+     * Period time value. [us]
+     */
+    volatile uint32_t _period;				
     
     // Gain that used at low pass filter calculations.
     // _alpha = 1.0 / (1.0 + _2PI * parameters.FILTER_FRQ / UPDATE_FRQ)
     static float _alpha;
     
     // [us]. Time at update() method.
-    static volatile unsigned long _T;
+    static volatile uint32_t _T;
 
     /** 
     * Check parameters validation.
@@ -143,13 +145,16 @@ class RPM
     */
     bool _checkParameters(void);
 
-    // Interrupt handler function for RPM channel 1.
+    // ---------------------------------------------------------------
+    // Friends functions:
+
+    /// Interrupt handler function for TachometerOptical channel 1.
     friend void _calcInput_CH1(void);
 
-    // Interrupt handler function for RPM channel 2.
+    /// Interrupt handler function for TachometerOptical channel 2.
     friend void _calcInput_CH2(void);
 
-    // Interrupt handler function for RPM channel 3.
+    /// Interrupt handler function for TachometerOptical channel 3.
     friend void _calcInput_CH3(void);
     
 };
