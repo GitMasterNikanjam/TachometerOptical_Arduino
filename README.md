@@ -1,6 +1,6 @@
 # TachometerOptical Library for Arduino 
 
-- This library can used for optical tachometers apllications. eg: Motor RPM measurement.  
+- This library can used for optical tachometers applications. eg: Motor RPM measurement.  
 - The main class is **TachometerOptical**. 
 - Max 3 number optical TachometerOptical object can created from RPTachometerOpticalM class at the same time.   
 - Each TachometerOptical object has its own digital pin number for signal interrupts.  
