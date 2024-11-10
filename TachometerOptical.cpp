@@ -73,38 +73,7 @@ TachometerOptical::TachometerOptical()
 
 TachometerOptical::~TachometerOptical() 
 {
-    detach();
-}
-
-bool TachometerOptical::attach(uint8_t channel_number, uint8_t pin_number)
-{	
-  if( (channel_number > 3) || (channel_number == 0) )
-  {
-    errorMessage = "Error TachometerOptical: channel number is not correct.";
-    return false;
-  }
-
-  if (_instances[channel_number - 1] != nullptr) 
-  {
-      // Detach any existing object for this channel
-      _instances[channel_number - 1]->detach();
-      delete _instances[channel_number - 1];
-  }
-
-  // Create a new object for this channel
-  _instances[channel_number - 1] = this;
-
-  parameters.CHANNEL_NUM = channel_number;
-  parameters.PIN_NUM = pin_number;
-  _attachedFlag = true;
-  
-  return true;
-}
-
-// Static function to detach a channel and remove the object
-void TachometerOptical::detach(void) 
-{
-  // Detach the interrupt and delete the object
+  // Detach the interrupt and remove the object pointer address from _instances aaray.
   detachInterrupt(digitalPinToInterrupt(parameters.PIN_NUM));
   _instances[parameters.CHANNEL_NUM - 1] = nullptr;
   _attachedFlag = false;
@@ -190,38 +159,53 @@ bool TachometerOptical::init(void)
   _period = 0;
   _startPeriod = 0;
 
-  if(_attachedFlag == true)
-  {
-    pinMode(parameters.PIN_NUM,INPUT_PULLUP);
-    
-    _funPointer = nullptr;
-    
-    switch(parameters.CHANNEL_NUM)
-    {
-      case 1:
-        _funPointer = _calcInput_CH1;
-      break;
-      case 2:
-        _funPointer = _calcInput_CH2;
-      break;
-      case 3:
-        _funPointer = _calcInput_CH3;
-      break;	
-    }
-
-    attachInterrupt(digitalPinToInterrupt(parameters.PIN_NUM), _funPointer, RISING);
-  }
-  else 
-  {
-    errorMessage = "Error TachometerOptical: Object has not attached to any channel.";
-    return false;
-  }
+  pinMode(parameters.PIN_NUM,INPUT_PULLUP);
   
+  _funPointer = nullptr;
+  
+  switch(parameters.CHANNEL_NUM)
+  {
+    case 1:
+      _funPointer = _calcInput_CH1;
+    break;
+    case 2:
+      _funPointer = _calcInput_CH2;
+    break;
+    case 3:
+      _funPointer = _calcInput_CH3;
+    break;	
+  }
+
+  attachInterrupt(digitalPinToInterrupt(parameters.PIN_NUM), _funPointer, RISING);
+  
+  // Store object address in instances array.
+  _instances[parameters.CHANNEL_NUM - 1] = this;
+
+  _attachedFlag = true;
+
   return true;
 }
 
 bool TachometerOptical::_checkParameters(void)
 {
+  if( (parameters.CHANNEL_NUM > 3) || (parameters.CHANNEL_NUM == 0) )
+  {
+    errorMessage = "Error TachometerOptical: channel number is not correct.";
+    return false;
+  }
+
+  if (_instances[parameters.CHANNEL_NUM - 1] != nullptr) 
+  {
+    errorMessage = "Error TachometerOptical: The channel number is used for another object. please select another channel.";
+    return false;;
+
+    /*
+    // Detach any existing object for this channel
+    _instances[channel_number - 1]->detach();
+    delete _instances[channel_number - 1];
+    */
+  }
+
   bool state = (parameters.FILTER_FRQ >= 0) && (parameters.UPDATE_FRQ >= 0) &&
                (parameters.PIN_NUM >= 0) && (parameters.CHANNEL_NUM >= 1) && (parameters.CHANNEL_NUM <= 3) &&
                (parameters.MAX >= parameters.MIN) ;

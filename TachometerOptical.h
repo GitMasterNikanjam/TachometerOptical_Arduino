@@ -5,8 +5,6 @@
 // Library information:
 /*
 TachometerOptical - a small optical tachometer library for Arduino.
-Developed by: Mohammad Nikanjam
-
 For more information read README.md file.
 */
 // ###################################################################
@@ -15,7 +13,7 @@ For more information read README.md file.
 #include <Arduino.h>
 
 // ####################################################################
-// Define macros:
+// Define Global macros:
 
 
 // ###################################################################################
@@ -24,137 +22,144 @@ For more information read README.md file.
 // ##################################################################################3
 // RPM class
 
+/**
+  @class TachometerOptical
+  @brief The class for tachometer applications. eg: measure motor RPM.  
+*/
 class TachometerOptical
 {
   public:
 
-    // Last error accured for object.
+    /// @brief Last error accured for object.
     String errorMessage;
 
-    /// Parameters struct
+    /**
+      @struct ParametersStructure
+      @brief Parameters structure.
+    */ 
     struct ParametersStructure
     {
       /**
-       * Min RPM value that acceptabled in update method. Bellow that return zero value.
-       * Default value: 0.
+       * @brief Minimum RPM value accepted in the update method. Below that, it returns a zero value.
+       * Default value: 0. This means it is disabled.
       */
       static uint16_t MIN;
 
       /**
-       * Max RPM value that accesp in update method. Upper that return last value updatation.
-       * Default value: 0. Means it disabled.
+       * @brief Maximum RPM value accepted in the update method. Above that, it returns the last updated value.
+       * Default value: 0. This means it is disabled.
       */
       static uint16_t MAX;
 
-      /*
-       * [Hz]. Low pass filter frequency(Cutoff filter frequency). **Hint: 0 value means disable it.
-       * Default value: 0.
+      /**
+       * @brief Low pass filter frequency(Cutoff filter frequency). [Hz].  
+       * Default value: 0. This means it is disabled.
       */ 
       static float FILTER_FRQ;
 
-      // Update frequency. This value insure that RPM filtered values just update in certain frequency. **Hint: 0 value means disable it.
+      /**
+        @brief Update frequency. This value ensures that RPM filtered values are updated at a certain frequency. 
+        Default value: 0. This means it is disabled.
+      */ 
       static float UPDATE_FRQ;
 
-      // Digital pin number of arduino that used for input pwm signal.
-      // -1 value means no pin assigned.
+      /**
+        @brief Digital pin number of the Arduino used for input PWM signal.
+        A value of -1 means no pin is assigned.
+      */ 
       int8_t PIN_NUM;	
 
-      // Channel number. Max 3 deferent channel can be used for all RPM objects.
+      /// @brief Channel number. A maximum of 3 different channels can be used for all RPM objects.
       uint8_t CHANNEL_NUM;											
 
     }parameters;
 
-    /// Values struct.
+    /**
+      @struct ValuesStructure
+      @brief Values structure.
+    */ 
     struct ValuesStructure
     {
-      // [RPM]. Raw input RPM signal measurement values.
+      /// @brief Raw input RPM signal measurement values. [RPM].
       float rawRPM;
       
-      // [RPM]. RPM value after lowpass filter and MIN/MAX saturation.
+      /// @brief RPM value after low-pass filter and MIN/MAX saturation. [RPM].
       float RPM;
 
+      /// @brief RPM value updated by all TachometerOptical objects.  
       static float sharedRPM;		
     }value;
 
     /**
-    * Constructor. Init default value of variables and parameters.
+    * @brief Default constructor. Init default value of variables and parameters.
     */
     TachometerOptical();
 
-    // Destructor
+    /// @brief Destructor
     ~TachometerOptical();
 
     /**
-     * Initialize object. Check parameters validation.
-     * @return true if successed.
+     * @brief Initialize object. Check parameters validation.
+     * @return true if succeeded.
      */ 
     bool init(void);
 
     /**
-     * Attach a digital pin to RPM channels. 
-     * Static function to create or get the instance for a specific channel
-     * Creates an instance of the class for a specific channel and pin. If an object for the same channel exists, it is replaced.
-     */ 
-    bool attach(uint8_t channel_number, uint8_t pin_number);
-	
-    // Static function to detach the object for a specific channel
-    // Removes an object for a specific channel.
-    void detach(void);
-
-    /**
-     * update and calculate filtered RPM value.
+     * @brief Update and calculate filtered RPM value.
      */
     static void update(void);
 
   private:
 
     /**
-     * Static array to store instances per channel
-     * Array to hold one object per channel (1-3)  
+     * @brief Static array to store instances per channel.  
+     * Array to hold one object per channel (1-3).    
      * Cell 0 is for channel 1. Cell 1 is for channel 2. Cell 2 is for channel 3.
     */
     static TachometerOptical* _instances[3];
 
-    // Define function pointer type
+    /// @brief Define function pointer type
     typedef void (*FunctionPtr)();
 
-    // FunctionPtr object for RPM signals interrupts handler.
+    /// @brief FunctionPtr object for signals interrupts handler.
     FunctionPtr _funPointer;
 
-    // Flag for store state of channeles that attached(true) or not_attached(false)
+    /// @brief Flag to store the state of channels that are attached (true) or not attached (false).
     bool _attachedFlag;
 
-    // Start timer value. [us]
+    /// @brief Start timer value. [us]
     volatile uint32_t _startPeriod;		
 
     /**
-     * Period time value. [us]
+     * @brief Period time value. [us]
      */
     volatile uint32_t _period;				
     
-    // Gain that used at low pass filter calculations.
-    // _alpha = 1.0 / (1.0 + _2PI * parameters.FILTER_FRQ / UPDATE_FRQ)
+    /**
+      @brief Gain used in low-pass filter calculations.  
+      @note _alpha = 1.0 / (1.0 + _2PI * FILTER_FRQ / UPDATE_FRQ)
+    */ 
     static float _alpha;
     
-    // [us]. Time at update() method.
+    /// @brief Time at the update() method. [us].
     static volatile uint32_t _T;
 
     /** 
-    * Check parameters validation.
-    * @return true if successed.
+    * @brief Check parameters validation.
+    * @return true if succeeded.
     */
     bool _checkParameters(void);
 
     // ---------------------------------------------------------------
     // Friends functions:
 
-    /// Interrupt handler function for TachometerOptical channel 1.
+    /// @brief Interrupt handler function for TachometerOptical channel 1.
     friend void _calcInput_CH1(void);
 
-    /// Interrupt handler function for TachometerOptical channel 2.
+    /// @brief Interrupt handler function for TachometerOptical channel 2.
     friend void _calcInput_CH2(void);
 
-    /// Interrupt handler function for TachometerOptical channel 3.
+    /// @brief Interrupt handler function for TachometerOptical channel 3.
     friend void _calcInput_CH3(void);
     
 };

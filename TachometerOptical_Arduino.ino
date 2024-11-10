@@ -25,12 +25,9 @@ uint32_t T,T_monitor;
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
-  if(rpm.attach(1, RPM1_PIN) == false)
-  {
-    Serial.println(rpm.errorMessage);
-    while(1);
-  }
-  
+
+  rpm.parameters.CHANNEL_NUM = 1;
+  rpm.parameters.PIN_NUM = RPM1_PIN;
   rpm.parameters.UPDATE_FRQ = 100;
   rpm.parameters.FILTER_FRQ = 100;
   rpm.parameters.MIN = 0;
