@@ -4,6 +4,8 @@
 
 #include "TachometerOptical.h"
 
+using namespace TachometerOptical_Namespace;
+
 // #######################################################################
 // Define macros:
 
@@ -31,21 +33,21 @@ float TachometerOptical::ValuesStructure::sharedRPM = 0;
 // ##########################################################################
 // General function definitions:
 
- void _calcInput_CH1(void)
+ void TachometerOptical_Namespace::_calcInput_CH1(void)
 {
   unsigned long tNow = micros();
   TachometerOptical::_instances[0]->_period = (uint32_t)(tNow - TachometerOptical::_instances[0]->_startPeriod);
   TachometerOptical::_instances[0]->_startPeriod = tNow;
 }
 
- void _calcInput_CH2(void)
+ void TachometerOptical_Namespace::_calcInput_CH2(void)
 {
   unsigned long tNow = micros();
   TachometerOptical::_instances[1]->_period = (uint32_t)(tNow - TachometerOptical::_instances[1]->_startPeriod);
   TachometerOptical::_instances[1]->_startPeriod = tNow;
 }
 
- void _calcInput_CH3(void)
+ void TachometerOptical_Namespace::_calcInput_CH3(void)
 {
   unsigned long tNow = micros();
   TachometerOptical::_instances[2]->_period = (uint32_t)(tNow - TachometerOptical::_instances[2]->_startPeriod);

@@ -19,6 +19,13 @@ For more information read README.md file.
 // ###################################################################################
 //  General function declarations:
 
+namespace TachometerOptical_Namespace
+{
+  void _calcInput_CH1(void);       /// @brief Interrupt handler function for TachometerOptical channel 1.
+  void _calcInput_CH2(void);       /// @brief Interrupt handler function for TachometerOptical channel 2.
+  void _calcInput_CH3(void);       /// @brief Interrupt handler function for TachometerOptical channel 3.
+}
+
 // ##################################################################################3
 // RPM class
 
@@ -154,13 +161,13 @@ class TachometerOptical
     // Friends functions:
 
     /// @brief Interrupt handler function for TachometerOptical channel 1.
-    friend void _calcInput_CH1(void);
+    friend void TachometerOptical_Namespace::_calcInput_CH1(void);
 
     /// @brief Interrupt handler function for TachometerOptical channel 2.
-    friend void _calcInput_CH2(void);
+    friend void TachometerOptical_Namespace::_calcInput_CH2(void);
 
     /// @brief Interrupt handler function for TachometerOptical channel 3.
-    friend void _calcInput_CH3(void);
+    friend void TachometerOptical_Namespace::_calcInput_CH3(void);
     
 };
 
